@@ -1,0 +1,42 @@
+4.3.1 Creating a Provider Network
+In this exercise, you will create a provider network to connect the physical network and
+enable floating IP addresses for use in subsequent labs.
+Step 1 Check Neutron configurations.
+Before creating a network, confirm the provider network name. On the controller node,
+enter the neutron_server container and view the content of
+/etc/neutron/plugins/ml2/ml2_conf.ini.
+
+The file defines a provider network named physnet1 of the flat_networks type.
+On the network node, enter the neutron_openvswitch_agent container and view the
+content of /etc/neutron/plugins/ml2/openvswitch_agent.ini.
+
+
+The file content suggests that physnet1 corresponds to br-ex. Enter the
+openvswitch_vswitchd container and run the ovs-vsctl command to check br-ex
+information.
+
+br-ex connects to the physical network through the ens224 NIC of the network node.
+Contact the network engineer to check the configuration of the network device interface
+connected to ens224. Based on this configuration, you can then choose the type of
+shared network to add. If the network type is VLAN or VXLAN, modify the ml2_conf.ini
+file in the neutron_server container accordingly. In this exercise, the NICs of all nodes are
+connected to a virtual switch without any configuration, so set the network type to flat.
+
+Step 2 Add a network.
+Log in to the OpenStack dashboard as an administrator, click Network, and choose
+Networks from the expanded menu.
+
+
+On the displayed page, click Create Network and enter required information.
+
+
+Click Expand Advanced Options to configure the subnet.
+
+Create a router and add the subnet to the route as an external gateway.
+
+
+
+After the operation is complete, the subnet will be used as the provider network to
+connect to the physical network.
+
+
