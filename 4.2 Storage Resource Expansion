@@ -1,0 +1,101 @@
+4.2 Storage Resource Expansion
+Ceph is used to provide backend storage resources for Cinder.
+Step 1 Make preparations.
+
+Create resource pool openeuler and user openeuler in Ceph.
+ceph osd pool create openeuler
+ceph osd pool application enable openeuler rbd
+ceph auth add client.openeuler mon 'allow r' osd 'allow rwx pool=openeuler'
+Export the keyring of the openeuler user.
+ceph auth get client.openeuler -o ceph.client.openeuler.keyring
+Copy the exported keyring file to the /etc/kolla/cinder-volume directory on each storage
+node.
+Step 2 Register a secret.
+Go to the nova_libvirt container on the compute node and run the following command
+to generate a random UUID for the secret:
+uuidgen
+
+Edit the secret.xml file as follows:
+<secret ephemeral='no' private='no'>
+ <uuid>8da28902-ab96-458a-94f0-d74d78232434</uuid>
+ <usage type='ceph'>
+ <name>client.openeuler secret</name>
+ </usage>
+</secret>
+In the file, uuid is the generated UUID, client.openeuler indicates the openeuler
+resource pool user.
+Define the secret.
+virsh secret-define --file secret.xml
+
+
+Pass the key of the client.openeuler user to the secret. For example, the key in the
+following figure is AQAy4yBmCamsLxAAG1hnu7U9nps6d0EiyspE9g==.
+
+Run the following command to pass the key to the secret:
+virsh secret-set-value --secret 7e4d77f2-6fb0-45c5-b229-0bb3bd4605c4 --base64
+AQAy4yBmCamsLxAAG1hnu7U9nps6d0EiyspE9g==
+
+
+Check the current secret.
+virsh secret-list
+
+
+After the registration is complete, two files corresponding to the secret are generated in
+the /etc/libvirt/secrets directory in the container, as shown in the following figure.
+ls /etc/libvirt/secrets/
+
+
+
+The /etc/libvirt/secrets directory in the container corresponds to the
+/var/lib/docker/volumes/nova_libvirt_secrets/_data directory on the host.
+"Name": "nova_libvirst_secrets",
+"Source": "/var/lib/docker/volumes/Nova_libvirt_secrets/data",
+"Destination": "/etc/libvirt/secrets",
+
+
+Copy the two generated files to the same directory on compute01, restart the
+nova_libvirt container, and check whether the same secret exists in the container.
+
+virth secret-list
+
+After confirming that the secret exists, restart the nova_compute container on each
+compute node.
+
+
+
+Step 3 Modify the Cinder configuration file.
+On each storage node, modify the /etc/kolla/cinder-volume/cinder.conf file as follows
+to add configurations for the storage pool to be added:
+.....
+11 enabled_backends = rbd-1,rbd-2
+......
+77 [rbd-2]
+78 volume_driver = cinder.volume.drivers.rbd.RBDDriver
+79 volume_backend_name = rbd-2
+80 rbd_pool = openeuler
+81 rbd_ceph_conf = /etc/ceph/ceph.conf
+82 rados_connect_timeout = 5
+83 rbd_user = openeuler
+84 rbd_cluster_name = ceph
+85 rbd_keyring_conf = /etc/ceph/ceph.client.openeuler.keyring
+86 rbd_secret_uuid = 7e4d77f2-6fb0-45c5-b229-0bb3bd4605c4 ### uuid is the secretuuid generated in
+the previous step.
+87 report_discard_supported = True
+......
+Restart the cinder-volume container on each storage node. Once the restart is complete,
+verify service functionality on the controller node. The following figure shows the
+expected output indicating normal service operation.
+
+openstack volume service list
+
+
+On the dashboard, you can check the available backend storage.
+
+Step 4 Bring online the expanded storage resources.
+Create an OpenStack volume type.
+openstack volume type create openeuler
+In the command, openeuler is a custom name.
+
+Associate the created volume type with the added backend storage.
+openstack volume type set openeuler --property volume_backend_name=openeuler
+
