@@ -1,0 +1,33 @@
+4.1 Compute Resource Expansion
+4.1.1 Modifying the Kolla Host Inventory
+Add information about the node to be added to the host inventory. For example, add
+information about compute02 to the required host group.
+
+
+At the same time, add related information to the hosts file of the deployment node
+(controller node in this lab).
+
+In addition, configure password-free login for Ansible.
+ssh-copy-id root@compute02
+
+4.1.2 Deploying the Node to Be Added
+Preconfigure the node to be added.
+kolla-ansible -i multinode bootstrap-servers --limit compute02
+Pull the required container image to the node to be added.
+kolla-ansible -i multinode pull --limit compute02
+Run the docker images command to check the pulled image.
+
+
+docker images
+Deploy the node.
+kolla-ansible -i multinode deploy --limit compute02
+
+
+4.1.3 Verifying the Expansion
+Check whether the node to be added is successfully deployed.
+openstack hypervisor list
+
+
+You can also check whether the node is deployed on the Administrator page of Skyline.
+
+
